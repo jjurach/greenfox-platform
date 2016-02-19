@@ -7,16 +7,18 @@ set -e
 : ${wildfly_dir:=$(basename $wildfly_file .zip)}
 : ${wildfly_cli:=$install_prefix/wildfly/bin/jboss-cli.sh}
 
+export JAVA_HOME=$install_prefix/jdk
+export PATH=$JAVA_HOME/bin:$PATH
+
 : ${deploy_wars:="greenfox-pup-0.1-SNAPSHOT.war  greenfox-retwisj.war"}
 
 # expect this directory already populated
 ls -l $wildfly_file
 
-if ! unzip -v >/dev/null; then
-  sudo apt-get install unzip
-fi
-if ! git --version >/dev/null; then
-  sudo apt-get install git
+unzip -v >/dev/null || need_pkgs="$need_pkgs unzip"
+git --version >/dev/null || need_pkgs="$need_pkgs git"
+if test -n "$need_pkgs"; then
+  sudo apt-get install -y $need_pkgs
 fi
 
 cd $install_prefix 
