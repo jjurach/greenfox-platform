@@ -4,8 +4,12 @@ set -e
 : ${install_prefix:=/greenfox}
 : ${software_dir:=$install_prefix/software}
 : ${wildfly_file:=$software_dir/wildfly-9.0.2.Final.zip}
-: ${wildfly_dir:=$(basename $wildfly_file .zip)}
-: ${wildfly_cli:=$install_prefix/wildfly/bin/jboss-cli.sh}
+: ${wildfly_subdir:=$(basename $wildfly_file .zip)}
+: ${wildfly_dir:=$install_prefix/wildfly}
+: ${wildfly_cli:=$wildfly_dir/bin/jboss-cli.sh}
+: ${wildfly_ctl:=$install_prefix/scripts/wildfly-ctl.sh}
+
+: ${adminpass:=qKzrOmiU9vCnW72RWjQ2}
 
 export JAVA_HOME=$install_prefix/jdk
 export PATH=$JAVA_HOME/bin:$PATH
@@ -23,16 +27,20 @@ fi
 
 cd $install_prefix 
 
-if ! test -d $wildfly_dir; then
+if ! test -d $wildfly_subdir; then
   unzip -qo $wildfly_file
-  ln -s $wildfly_dir wildfly
+  ln -s $wildfly_subdir wildfly
 fi
 
-scripts/wildfly-ctl.sh start
+$wildfly_ctl start
+
+if ! crontab -l | egrep -v '^#' | grep -q $wildfly_ctl; then
+  (crontab -l; echo "@reboot $wildfly_ctl start") | crontab
+fi
 
 if ! grep -q ^admin= wildfly/standalone/configuration/mgmt-users.properties; then
   # admin creation
-  wildfly/bin/add-user.sh admin qKzrOmiU9vCnW72RWjQ2
+  wildfly/bin/add-user.sh admin $adminpass
 
   # initialize deployments
   sleep 6
